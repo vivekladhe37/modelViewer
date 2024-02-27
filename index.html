@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge Model Viewer</title>
+    <style>
+        #viewer {
+            position: absolute;
+            inset: 0;
+        }
+        
+        #models {
+            position: absolute;
+            left: 1em;
+            top: 1em;
+            z-index: 1;
+        }
+    </style>
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css">
+</head>
+<body>
+    <div id="viewer"></div>
+    <select id="models"></select>
+    
+    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
+    <script>
+        var viewer;
+
+        function initializeViewer() {
+            var options = {
+                env: 'AutodeskProduction2',
+                getAccessToken: function(onTokenReady) {
+                    // Make a request to your token generation endpoint to obtain a new token
+                    const clientId = 'i3ubGGn8qrTaI8FYNsQtljBkGkTnz9Cv';
+                    const clientSecret = 'WwII1a1WWbvkaTVb';
+                    const data = new URLSearchParams({
+                        "client_id": clientId,
+                        "client_secret": clientSecret,
+                        "grant_type": "client_credentials",
+                        "scope": "data:read data:create"
+                    });
+                    fetch('https://developer.api.autodesk.com/authentication/v2/token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        body: data
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            // Extract the token from the response
+                            var token = data.access_token;
+                            var timeInSeconds = data.expires_in;
+                            // Call the callback function with the new token
+                            onTokenReady(token, timeInSeconds);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching token:', error);
+                        });
+                }
+            };
+
+            Autodesk.Viewing.Initializer(options, function() {
+                var viewerDiv = document.getElementById('viewer');
+
+                const models = [
+                        {
+                            "name":"CAPE HJ Mechanical",
+                            "urn":"urn:dXJuOmFkc2sud2lwcHJvZDpmcy5maWxlOnZmLmNVa1ZTYUZLUXdPTnZ4TkpmbWRnNGc_dmVyc2lvbj0xMA"
+                        },
+                        {
+                            "name":"CAPE HJ Structural",
+                            "urn":"iufklsdrfngskilufgnfliushgiojgoasgfosdfjofgjaoirgjnaofgjaoergjsloigjerojgaofgjaerojgfae"
+                        }
+                ];
+
+                const dropdown = document.getElementById('models');
+                dropdown.innerHTML = models.map(m => `<option value="${m.urn}">${m.name}</option>`).join('');
+
+                viewer = new Autodesk.Viewing.GuiViewer3D(viewerDiv);
+                
+                var startedCode = viewer.start();
+                if (startedCode > 0) {
+                    console.error('Failed to create a Viewer: WebGL not supported.');
+                    return;
+                }
+
+                var selectedModelID = dropdown.value;
+
+                console.log("Defualt Model ID : "+selectedModelID)
+                //Autodesk.Viewing.Document.load(defaultModelID, onDocumentLoadSuccess, onDocumentLoadFailure);
+
+                //adding listner for change in the model
+                dropdown.addEventListener('change',function(){
+                    selectedModelID = dropdown.value;
+                    Autodesk.Viewing.Document.load(selectedModelID, onDocumentLoadSuccess, onDocumentLoadFailure);
+                });
+                Autodesk.Viewing.Document.load(selectedModelID, onDocumentLoadSuccess, onDocumentLoadFailure);
+            });
+
+            function onDocumentLoadSuccess(viewerDocument) {
+                var defaultModel = viewerDocument.getRoot().getDefaultGeometry();
+                viewer.loadDocumentNode(viewerDocument, defaultModel);
+            }
+
+            function onDocumentLoadFailure() {
+                console.log("Failed");
+                alert('Failed fetching Forge manifest');
+            }
+        }
+
+        initializeViewer();
+    </script>
+</body>
+</html>
